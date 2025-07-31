@@ -112,7 +112,7 @@ echo Vas a crear una nueva particion para backups.
 echo Asegurate de tener espacio sin asignar en el disco.
 echo.
 
-:: === Calcular espacio usado en C: (en bytes) y convertirlo a MB ===
+:: === Calcular espacio usado en C: ===
 for /f "tokens=3" %%a in ('fsutil volume diskfree %SYSTEM_DRIVE% ^| find "Total # of bytes"') do set TOTAL_BYTES=%%a
 for /f "tokens=3" %%a in ('fsutil volume diskfree %SYSTEM_DRIVE% ^| find "Total # of free bytes"') do set FREE_BYTES=%%a
 
@@ -125,28 +125,32 @@ echo Se recomienda un minimo de: %SUGERIDO_MB% MB para backup.
 echo.
 
 set /p TAMANIO=Cuantos MB queres usar para la particion de backup? [%SUGERIDO_MB%]: 
-
-:: Si no ingresó nada, usamos el valor sugerido
 if "%TAMANIO%"=="" set TAMANIO=%SUGERIDO_MB%
 
+:: === Buscar letra de unidad libre usando PowerShell ===
+for /f %%i in ('powershell -nologo -command "('D'..'Z') | Where-Object { -not (Test-Path (\"$($_):\")) } | Select-Object -First 1"') do set UNIDAD_LIBRE=%%i:
+
 echo.
+echo Se usara la letra de unidad libre: %UNIDAD_LIBRE%
 echo Creando particion de %TAMANIO% MB...
 echo.
+
 (
 echo select disk 0
 echo create partition primary size=%TAMANIO%
 echo format fs=ntfs quick
-echo assign letter=D
+echo assign letter=%UNIDAD_LIBRE:~0,1%
 echo exit
 ) | diskpart > nul
 
-if exist D:\ (
-    mkdir D:\SystemBackup
+if exist %UNIDAD_LIBRE% (
+    mkdir %UNIDAD_LIBRE%\SystemBackup
     echo.
-    echo ✅ Particion creada y carpeta 'SystemBackup' lista en D:\
+    echo Particion creada y carpeta 'SystemBackup' lista en %UNIDAD_LIBRE%
+    set BACKUP_PATH=%UNIDAD_LIBRE%\SystemBackup
 ) else (
     echo.
-    echo ❌ Error al crear la particion o asignar letra.
+    echo Error al crear la particion o asignar letra.
 )
 
 pause
