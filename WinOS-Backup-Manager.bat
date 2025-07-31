@@ -111,7 +111,23 @@ echo.
 echo Vas a crear una nueva particion para backups.
 echo Asegurate de tener espacio sin asignar en el disco.
 echo.
-set /p TAMANIO=Cuantos MB queres usar para la particion de backup?: 
+
+:: === Calcular espacio usado en C: (en bytes) y convertirlo a MB ===
+for /f "tokens=3" %%a in ('fsutil volume diskfree %SYSTEM_DRIVE% ^| find "Total # of bytes"') do set TOTAL_BYTES=%%a
+for /f "tokens=3" %%a in ('fsutil volume diskfree %SYSTEM_DRIVE% ^| find "Total # of free bytes"') do set FREE_BYTES=%%a
+
+set /a USED_BYTES=%TOTAL_BYTES% - %FREE_BYTES%
+set /a USED_MB=%USED_BYTES:~0,-6%
+set /a SUGERIDO_MB=%USED_MB% * 65 / 100
+
+echo Tu sistema (C:) usa aproximadamente: %USED_MB% MB
+echo Se recomienda un minimo de: %SUGERIDO_MB% MB para backup.
+echo.
+
+set /p TAMANIO=Cuantos MB queres usar para la particion de backup? [%SUGERIDO_MB%]: 
+
+:: Si no ingresó nada, usamos el valor sugerido
+if "%TAMANIO%"=="" set TAMANIO=%SUGERIDO_MB%
 
 echo.
 echo Creando particion de %TAMANIO% MB...
@@ -126,9 +142,11 @@ echo exit
 
 if exist D:\ (
     mkdir D:\SystemBackup
-    echo Particion creada y carpeta 'SystemBackup' lista en D:\
+    echo.
+    echo ✅ Particion creada y carpeta 'SystemBackup' lista en D:\
 ) else (
-    echo Error al crear la particion o asignar letra.
+    echo.
+    echo ❌ Error al crear la particion o asignar letra.
 )
 
 pause
